@@ -7,7 +7,7 @@ import (
 
 // CreateUrl creates a url for the request
 func CreateUrl(endpoint, deploymentName string) string {
-	apiVersion := "2023-03-15"
+	apiVersion := "2023-03-15-preview"
 	return fmt.Sprintf("%s/openai/deployments/%s/chat/completions?api-version=%s", endpoint, deploymentName, apiVersion)
 }
 
@@ -20,8 +20,12 @@ type Config struct {
 }
 
 func NewConfig(endpoint, deploymentName string, opts ...ConfigOpt) (*Config, error) {
-	systemRole := "You generate Git commit messages based on provided output from git diff commands. " +
-		"Keep the replies short and to the point. Do not include any explanation, only the commit message."
+	systemRole := "You generate Git commit messages based on provided output from git diff commands. A commit message has a title and a body." +
+		"Instructions:" +
+		"- The response should have a title that is under 72 characters long. This title should summarize the changes." +
+		"- After the title, add a single empty row" +
+		"- Keep the body description short and to the point. " +
+		"- Include only the commit message in the response."
 
 	c := Config{
 		Url:           CreateUrl(endpoint, deploymentName),

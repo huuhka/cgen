@@ -1,0 +1,101 @@
+diff --git a/client.go b/client.go
+index 1a8cb87..a92f7e8 100644
+--- a/client.go
++++ b/client.go
+@@ -3,6 +3,7 @@ package cgen
+ import (
+ 	"bytes"
+ 	"context"
++	"encoding/json"
+ 	"fmt"
+ 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+ 	"net/http"
+@@ -13,12 +14,39 @@ type OpenAiClient struct {
+ 	config *Config
+ }
+ 
+-// CreateRequest creates a request for the OpenAI API
+-func (c OpenAiClient) CreateRequest(prompt string) (*http.Request, error) {
++func (c OpenAiClient) GetCommitMessage(diff string) (string, error) {
++	// create conversation with config.SystemContext and diff
++	diffMsg := NewUserMessage(diff)
++	convo := NewConversation(c.config.SystemContext)
++	convo.Messages = append(convo.Messages, diffMsg)
++
++	// create request
++	req, err := c.createRequest(convo)
++	if err != nil {
++		return "", fmt.Errorf("unable to create request: %w", err)
++	}
++	resp, err := http.DefaultClient.Do(req)
++	if err != nil {
++		return "", fmt.Errorf("unable to send request: %w", err)
++	}
++
++	// parse response
++	var parsedResp OpenAiCompletionResponse
++	err = json.NewDecoder(resp.Body).Decode(&parsedResp)
++	if err != nil {
++		return "", fmt.Errorf("unable to parse response: %w", err)
++	}
++	commitMsg := parsedResp.Choices[0].Message.Content
++
++	return commitMsg, nil
++}
++
++// createRequest creates a request for the OpenAI API
++func (c OpenAiClient) createRequest(conversation *Conversation) (*http.Request, error) {
+ 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+ 	defer cancel()
+ 
+-	body := c.generateRequestBody(prompt)
++	body := c.generateRequestBody(conversation)
+ 
+ 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.config.Url, bytes.NewBuffer(body))
+ 
+@@ -37,6 +65,6 @@ func (c OpenAiClient) CreateRequest(prompt string) (*http.Request, error) {
+ 	return req, err
+ }
+ 
+-func (c OpenAiClient) generateRequestBody(prompt string) []byte {
++func (c OpenAiClient) generateRequestBody(conversation *Conversation) []byte {
+ 	return nil
+ }
+\ No newline at end of file
+diff --git a/cmd/cgen/main.go b/cmd/cgen/main.go
+index c5ff412..d0133fe 100644
+--- a/cmd/cgen/main.go
++++ b/cmd/cgen/main.go
+@@ -18,9 +18,9 @@ func main() {
+ 		log.Fatal("OPENAI_ENDPOINT is not set")
+ 	}
+ 
+-	deploymentName := os.Getenv("OPENAI_DEPLOYMENTNAME")
++	deploymentName := os.Getenv("OPENAI_DEPLOYMENT_NAME")
+ 	if deploymentName == "" {
+-		log.Fatal("OPENAI_DEPLOYMENTNAME is not set")
++		log.Fatal("OPENAI_DEPLOYMENT_NAME is not set")
+ 	}
+ 
+ 	config, err := cgen.NewConfig(endpoint, deploymentName, cgen.WithApiKey(apiKey))
+diff --git a/message.go b/message.go
+index 11419a9..b6cdc63 100644
+--- a/message.go
++++ b/message.go
+@@ -39,12 +39,12 @@ func (c *Conversation) AddMessage(response OpenAiCompletionResponse) {
+ 	}
+ }
+ 
+-// OpenAiCompletionResponse is the response from the OpenAI API
++// OpenAiCompletionResponse is the response body from the OpenAI API
+ type OpenAiCompletionResponse struct {
+ 	Choices []struct {
+-		FinishReason string `json:"finish_reason"`
+-		Index        int    `json:"index"`
+-		Message      `json:"message"`
++		FinishReason string  `json:"finish_reason"`
++		Index        int     `json:"index"`
++		Message      Message `json:"message"`
+ 	} `json:"choices"`
+ 	Created int    `json:"created"`
+ 	Id      string `json:"id"`

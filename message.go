@@ -33,18 +33,23 @@ func NewConversation(systemMessage Message) *Conversation {
 }
 
 // AddMessage adds a message to the conversation from a response
-func (c *Conversation) AddMessage(response OpenAiResponse) {
+func (c *Conversation) AddMessage(response OpenAiCompletionResponse) {
 	for _, choice := range response.Choices {
 		c.Messages = append(c.Messages, choice.Message)
 	}
 }
 
-// OpenAiResponse is the response from the OpenAI API
-type OpenAiResponse struct {
+// OpenAiCompletionRequest is the request body to the OpenAI API
+type OpenAiCompletionRequest struct {
+	Messages []Message `json:"messages"`
+}
+
+// OpenAiCompletionResponse is the response body from the OpenAI API
+type OpenAiCompletionResponse struct {
 	Choices []struct {
-		FinishReason string `json:"finish_reason"`
-		Index        int    `json:"index"`
-		Message      `json:"message"`
+		FinishReason string  `json:"finish_reason"`
+		Index        int     `json:"index"`
+		Message      Message `json:"message"`
 	} `json:"choices"`
 	Created int    `json:"created"`
 	Id      string `json:"id"`
