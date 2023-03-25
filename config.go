@@ -20,12 +20,12 @@ type Config struct {
 }
 
 func NewConfig(endpoint, deploymentName string, opts ...ConfigOpt) (*Config, error) {
-	systemRole := "You generate Git commit messages based on provided output from git diff commands. A commit message has a title and a body." +
-		"Instructions:" +
-		"- The response should have a title that is under 72 characters long. This title should summarize the changes." +
-		"- After the title, add a single empty row" +
-		"- Keep the body description short and to the point. " +
-		"- Include only the commit message in the response."
+	systemRole := "You generate Git commit messages based on provided output from git diff commands. Format follows best practices of git commits." +
+		"Message formatting:" +
+		"First line is 50 characters or less. It summarizes the changes in a sentence." +
+		"Then a blank line." +
+		"Remaining text should be wrapped at 72 characters." +
+		"Keep the body description short and to the point. Each line prefixed with '-'"
 
 	c := Config{
 		Url:           CreateUrl(endpoint, deploymentName),
